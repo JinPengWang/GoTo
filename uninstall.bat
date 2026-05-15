@@ -22,6 +22,7 @@ echo ============================================================
 echo.
 echo   This will:
 echo     - Restore the original browser handler
+echo     - Remove QQ and WeChat browser configuration
 echo     - Delete the exe and build artifacts
 echo.
 set /p "CONFIRM=   Proceed? (Y/N): "
@@ -37,7 +38,7 @@ echo.
 rem ==============================================
 rem Step 1: Read metadata from install
 rem ==============================================
-echo [1/4] Reading install metadata...
+echo [1/5] Reading install metadata...
 
 set "BACKUP_DIR=%cd%\backup"
 set "META_FILE=!BACKUP_DIR!\metadata.txt"
@@ -61,7 +62,7 @@ rem ==============================================
 rem Step 2: Restore registry
 rem ==============================================
 echo.
-echo [2/4] Restoring registry...
+echo [2/5] Restoring registry...
 
 set "RESTORED=0"
 
@@ -115,10 +116,46 @@ if !RESTORED! equ 0 (
 )
 
 rem ==============================================
-rem Step 3: Delete program files
+rem Step 3: Remove QQ and WeChat browser configuration
 rem ==============================================
 echo.
-echo [3/4] Removing program files...
+echo [3/5] Removing QQ and WeChat configuration...
+
+set "APP_CLEANED=0"
+
+rem QQ
+reg query "HKCU\Software\Tencent\QQ" /v UseDefaultBrowser >nul 2>&1
+if !errorlevel! equ 0 (
+    reg delete "HKCU\Software\Tencent\QQ" /v UseDefaultBrowser /f >nul 2>&1
+    echo   Removed: QQ UseDefaultBrowser
+    set /a APP_CLEANED+=1
+)
+
+rem QQNT
+reg query "HKCU\Software\Tencent\QQNT" /v UseDefaultBrowser >nul 2>&1
+if !errorlevel! equ 0 (
+    reg delete "HKCU\Software\Tencent\QQNT" /v UseDefaultBrowser /f >nul 2>&1
+    echo   Removed: QQNT UseDefaultBrowser
+    set /a APP_CLEANED+=1
+)
+
+rem WeChat
+reg query "HKCU\Software\Tencent\WeChat" /v UseDefaultBrowser >nul 2>&1
+if !errorlevel! equ 0 (
+    reg delete "HKCU\Software\Tencent\WeChat" /v UseDefaultBrowser /f >nul 2>&1
+    echo   Removed: WeChat UseDefaultBrowser
+    set /a APP_CLEANED+=1
+)
+
+if !APP_CLEANED! equ 0 (
+    echo   No QQ/WeChat configuration found.
+)
+
+rem ==============================================
+rem Step 4: Delete program files
+rem ==============================================
+echo.
+echo [4/5] Removing program files...
 
 if exist "GoTo.exe" (
     del /f /q "GoTo.exe"
@@ -130,10 +167,10 @@ if exist "GoTo.exe" (
 if exist "redirector.spec" del /f /q "redirector.spec"
 
 rem ==============================================
-rem Step 4: Cleanup
+rem Step 5: Cleanup
 rem ==============================================
 echo.
-echo [4/4] Cleaning up...
+echo [5/5] Cleaning up...
 
 if exist "build" rd /s /q "build" && echo   Deleted: build/
 if exist "dist" rd /s /q "dist" && echo   Deleted: dist/

@@ -36,6 +36,7 @@ GoTo 将自己注册为系统的链接处理器。点击任何链接时，Window
 - **Smart fallback** — 目标浏览器未找到时自动降级到系统默认浏览器
 - **Internal URL protection** — `edge://`、`chrome://` 等浏览器内部 URL 不受影响
 - **microsoft-edge: protocol** — 自动处理 Windows 通知中心/开始菜单的强制 Edge 链接
+- **Faild** — QQ/WeChat 的内置浏览器绕过了 Windows 协议处理器，GoTo 无法直接拦截。UseDefaultBrowser 注册表键是一个最佳努力方案——部分版本的 QQ 会遵守，但某些链接（小程序、公众号）仍会被锁定在内置浏览器中。
 
 ---
 
@@ -43,11 +44,11 @@ GoTo 将自己注册为系统的链接处理器。点击任何链接时，Window
 
 ### Prerequisites
 
-| Requirement | Notes |
-|-------------|-------|
-| Windows 10/11 | Required |
-| Python 3.8+ | [Download](https://www.python.org/downloads/), check "Add Python to PATH" |
-| Chrome and/or Edge | At least one installed |
+| Requirement        | Notes                                                                     |
+| ------------------ | ------------------------------------------------------------------------- |
+| Windows 10/11      | Required                                                                  |
+| Python 3.8+        | [Download](https://www.python.org/downloads/), check "Add Python to PATH" |
+| Chrome and/or Edge | At least one installed                                                    |
 
 ### Install
 
@@ -131,11 +132,7 @@ Find the relevant rule group, add the domain to the `domains` array:
 {
     "name": "Development & Tech",
     "browser": "chrome",
-    "domains": [
-        "github.com",
-        "stackoverflow.com",
-        "mysite.com"
-    ]
+    "domains": ["github.com", "stackoverflow.com", "mysite.com"]
 }
 ```
 
@@ -145,11 +142,7 @@ Find the relevant rule group, add the domain to the `domains` array:
 {
     "name": "My Custom Sites",
     "browser": "chrome",
-    "domains": [
-        "notion.so",
-        "figma.com",
-        "linear.app"
-    ]
+    "domains": ["notion.so", "figma.com", "linear.app"]
 }
 ```
 
@@ -188,22 +181,22 @@ Leave empty `""` for auto-detection. Auto-detection checks: registry → `%Progr
 
 ## Preset Rules (500+ domains)
 
-| Category | Examples |
-|----------|----------|
-| Search & Email | google.com, gmail.com, outlook.live.com, yahoo.com |
-| Video | youtube.com, vimeo.com, twitch.tv, tiktok.com |
-| Social Media | twitter.com, facebook.com, instagram.com, reddit.com, linkedin.com |
-| Dev & Tech | github.com, gitlab.com, stackoverflow.com, docker.com, vercel.com |
-| Cloud Services | AWS, Azure, Google Cloud, Cloudflare, Fastly, Akamai |
+| Category            | Examples                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| Search & Email      | google.com, gmail.com, outlook.live.com, yahoo.com                           |
+| Video               | youtube.com, vimeo.com, twitch.tv, tiktok.com                                |
+| Social Media        | twitter.com, facebook.com, instagram.com, reddit.com, linkedin.com           |
+| Dev & Tech          | github.com, gitlab.com, stackoverflow.com, docker.com, vercel.com            |
+| Cloud Services      | AWS, Azure, Google Cloud, Cloudflare, Fastly, Akamai                         |
 | Academic Publishers | IEEE, ACM, Springer, Nature, Science, Elsevier, Wiley, JSTOR, arXiv, bioRxiv |
-| Academic Tools | Semantic Scholar, OpenReview, Papers with Code, Overleaf, Zotero |
-| AI & ML | openai.com, claude.ai, huggingface.co, pytorch.org, kaggle.com |
-| Online Learning | coursera.org, edx.org, udemy.com, leetcode.com |
-| Cloud & Office | notion.so, dropbox.com, slack.com, zoom.us, figma.com |
-| E-Commerce | amazon.com, ebay.com, etsy.com, aliexpress.com |
-| News | cnn.com, bbc.com, nytimes.com, reuters.com, bloomberg.com |
-| Design | dribbble.com, behance.net, adobe.com, unsplash.com |
-| VPN & Privacy | expressvpn.com, protonvpn.com, torproject.org, eff.org |
+| Academic Tools      | Semantic Scholar, OpenReview, Papers with Code, Overleaf, Zotero             |
+| AI & ML             | openai.com, claude.ai, huggingface.co, pytorch.org, kaggle.com               |
+| Online Learning     | coursera.org, edx.org, udemy.com, leetcode.com                               |
+| Cloud & Office      | notion.so, dropbox.com, slack.com, zoom.us, figma.com                        |
+| E-Commerce          | amazon.com, ebay.com, etsy.com, aliexpress.com                               |
+| News                | cnn.com, bbc.com, nytimes.com, reuters.com, bloomberg.com                    |
+| Design              | dribbble.com, behance.net, adobe.com, unsplash.com                           |
+| VPN & Privacy       | expressvpn.com, protonvpn.com, torproject.org, eff.org                       |
 
 All unmatched domains default to Edge.
 
@@ -245,6 +238,27 @@ No. GoTo only modifies the browser's command handler, not the system default bro
 No. Links clicked inside Edge are handled by Edge internally — GoTo never sees them. This applies to Edge's built-in PDF viewer, Edge's address bar, etc. For links from **external apps** (Word, Adobe Reader, WeChat, email clients, etc.), GoTo works perfectly.
 
 > **Tip:** For PDF files, use an external reader like Adobe Acrobat or SumatraPDF instead of opening them in Edge. Links in those PDFs will be routed by GoTo.
+
+### Links in QQ / WeChat open in the built-in browser?
+
+QQ and WeChat use an embedded Chromium browser to open links internally, bypassing the Windows protocol handler entirely. This means GoTo cannot intercept those links.
+
+**What GoTo does automatically:** During installation, GoTo sets the `UseDefaultBrowser = 1` registry key for QQ, QQNT, and WeChat. This tells them to use the system default browser instead of the built-in one.
+
+**If links still open in the built-in browser:**
+
+For QQ:
+
+1. Open QQ Settings (设置) → General (基本设置)
+2. Find and enable "使用默认浏览器打开链接" (Open links with default browser)
+
+For WeChat:
+
+1. Open WeChat Settings (设置) → General (通用设置)
+2. Find and enable "使用默认浏览器打开链接"
+3. Or: when a link opens in WeChat's browser, tap the `...` menu → "在默认浏览器中打开"
+
+**Limitations:** Some links (mini-programs, official accounts, WeChat Pay) are intentionally locked to the built-in browser and cannot be redirected. This is by design and cannot be changed.
 
 ### Support other browsers?
 

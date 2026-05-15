@@ -26,7 +26,7 @@ echo.
 rem ==============================================
 rem Step 1: Find a working Python
 rem ==============================================
-echo [1/6] Finding Python...
+echo [1/7] Finding Python...
 
 set "PYTHON="
 
@@ -97,7 +97,7 @@ rem ==============================================
 rem Step 2: Install PyInstaller
 rem ==============================================
 echo.
-echo [2/6] Checking PyInstaller...
+echo [2/7] Checking PyInstaller...
 
 "!PYTHON!" -c "import PyInstaller" >nul 2>&1
 if !errorlevel! neq 0 (
@@ -120,7 +120,7 @@ rem ==============================================
 rem Step 3: Build exe
 rem ==============================================
 echo.
-echo [3/6] Building exe (may take 1-2 minutes)...
+echo [3/7] Building exe (may take 1-2 minutes)...
 
 if not exist "redirector.py" (
     echo   [ERROR] redirector.py not found in %cd%
@@ -158,7 +158,7 @@ rem ==============================================
 rem Step 4: Backup registry and detect default browser
 rem ==============================================
 echo.
-echo [4/6] Backing up registry and detecting default browser...
+echo [4/7] Backing up registry and detecting default browser...
 
 set "BACKUP_DIR=%cd%\backup"
 if not exist "!BACKUP_DIR!" mkdir "!BACKUP_DIR!"
@@ -208,7 +208,7 @@ rem ==============================================
 rem Step 5: Register protocol handler
 rem ==============================================
 echo.
-echo [5/6] Registering protocol handler...
+echo [5/7] Registering protocol handler...
 
 set "NEW_CMD=\"!EXE_PATH!\" \"%%1\""
 
@@ -229,10 +229,49 @@ echo   Modified: http and https protocol handlers
 echo   Done.
 
 rem ==============================================
-rem Step 6: Cleanup
+rem Step 6: Configure QQ and WeChat to use external browser
 rem ==============================================
 echo.
-echo [6/6] Cleaning up...
+echo [6/7] Configuring QQ and WeChat...
+
+set "APP_CONFIGURED=0"
+
+rem QQ: set UseDefaultBrowser = 1
+reg query "HKCU\Software\Tencent\QQ" >nul 2>&1
+if !errorlevel! equ 0 (
+    reg add "HKCU\Software\Tencent\QQ" /v UseDefaultBrowser /t REG_DWORD /d 1 /f >nul 2>&1
+    echo   Configured: QQ (UseDefaultBrowser = 1)
+    set /a APP_CONFIGURED+=1
+)
+
+rem QQNT: set UseDefaultBrowser = 1
+reg query "HKCU\Software\Tencent\QQNT" >nul 2>&1
+if !errorlevel! equ 0 (
+    reg add "HKCU\Software\Tencent\QQNT" /v UseDefaultBrowser /t REG_DWORD /d 1 /f >nul 2>&1
+    echo   Configured: QQNT (UseDefaultBrowser = 1)
+    set /a APP_CONFIGURED+=1
+)
+
+rem WeChat: set UseDefaultBrowser = 1
+reg query "HKCU\Software\Tencent\WeChat" >nul 2>&1
+if !errorlevel! equ 0 (
+    reg add "HKCU\Software\Tencent\WeChat" /v UseDefaultBrowser /t REG_DWORD /d 1 /f >nul 2>&1
+    echo   Configured: WeChat (UseDefaultBrowser = 1)
+    set /a APP_CONFIGURED+=1
+)
+
+if !APP_CONFIGURED! equ 0 (
+    echo   QQ and WeChat not found (no action needed).
+) else (
+    echo   Note: Some links in QQ/WeChat may still use the built-in browser.
+    echo   If so, enable "Open links with default browser" in app settings.
+)
+
+rem ==============================================
+rem Step 7: Cleanup
+rem ==============================================
+echo.
+echo [7/7] Cleaning up...
 if exist "build" rd /s /q "build"
 if exist "dist" rd /s /q "dist"
 if exist "redirector.spec" del /f /q "redirector.spec"
