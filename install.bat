@@ -120,7 +120,7 @@ rem ==============================================
 rem Step 3: Build exe
 rem ==============================================
 echo.
-echo [3/7] Building exe (may take 1-2 minutes)...
+echo [3/8] Validating configuration...
 
 if not exist "redirector.py" (
     echo   [ERROR] redirector.py not found in %cd%
@@ -133,6 +133,25 @@ if not exist "rules.json" (
     pause
     exit /b 1
 )
+
+"!PYTHON!" -m json.tool "rules.json" >nul 2>&1
+if !errorlevel! neq 0 (
+    echo.
+    echo   [ERROR] rules.json is not valid JSON.
+    echo   Fix the configuration file before installing.
+    echo   Details:
+    "!PYTHON!" -m json.tool "rules.json"
+    echo.
+    pause
+    exit /b 1
+)
+echo   rules.json is valid.
+
+rem ==============================================
+rem Step 4: Build exe
+rem ==============================================
+echo.
+echo [4/8] Building exe (may take 1-2 minutes)...
 
 if exist "build" rd /s /q "build"
 if exist "dist" rd /s /q "dist"
@@ -155,10 +174,10 @@ echo.
 echo   Build success: !EXE_PATH!
 
 rem ==============================================
-rem Step 4: Backup registry and detect default browser
+rem Step 5: Backup registry and detect default browser
 rem ==============================================
 echo.
-echo [4/7] Backing up registry and detecting default browser...
+echo [5/8] Backing up registry and detecting default browser...
 
 set "BACKUP_DIR=%cd%\backup"
 if not exist "!BACKUP_DIR!" mkdir "!BACKUP_DIR!"
@@ -183,7 +202,11 @@ echo   Default browser ProgId: !PROG_ID!
 
 rem Backup the original command for this ProgId
 set "PROG_CMD_KEY=HKEY_CLASSES_ROOT\!PROG_ID!\shell\open\command"
+set "USER_PROG_CMD_KEY=HKCU\Software\Classes\!PROG_ID!\shell\open\command"
+set "USER_OVERRIDE_BACKED_UP=0"
 reg export "!PROG_CMD_KEY!" "!BACKUP_DIR!\default_browser_backup.reg" /y >nul 2>&1
+reg export "!USER_PROG_CMD_KEY!" "!BACKUP_DIR!\user_default_browser_backup.reg" /y >nul 2>&1
+if !errorlevel! equ 0 set "USER_OVERRIDE_BACKED_UP=1"
 
 rem Also read the original command value for later reference
 set "ORIG_CMD="
@@ -201,19 +224,28 @@ rem Save metadata for uninstall
 echo PROG_ID=!PROG_ID!> "!BACKUP_DIR!\metadata.txt"
 echo ORIG_CMD=!ORIG_CMD!>> "!BACKUP_DIR!\metadata.txt"
 echo EXE_PATH=!EXE_PATH!>> "!BACKUP_DIR!\metadata.txt"
+echo USER_OVERRIDE_BACKED_UP=!USER_OVERRIDE_BACKED_UP!>> "!BACKUP_DIR!\metadata.txt"
 
 echo   Backup complete.
 
 rem ==============================================
-rem Step 5: Register protocol handler
+rem Step 6: Register protocol handler
 rem ==============================================
 echo.
-echo [5/7] Registering protocol handler...
+echo [6/8] Registering protocol handler...
 
 set "NEW_CMD=\"!EXE_PATH!\" \"%%1\""
 
-rem Method 1: Modify the default browser's ProgId command handler
-rem This is what actually takes effect on Windows 10/11 due to UserChoice
+rem Method 1: Add a per-user ProgId override.
+rem HKCR merges HKCU before HKLM, so browser updates are less likely to overwrite this.
+reg add "!USER_PROG_CMD_KEY!" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
+if !errorlevel! neq 0 (
+    echo   [WARNING] Failed to modify per-user !PROG_ID! handler.
+) else (
+    echo   Modified: HKCU\Software\Classes\!PROG_ID!\shell\open\command
+)
+
+rem Method 2: Modify the machine/default browser ProgId command handler
 reg add "!PROG_CMD_KEY!" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
 if !errorlevel! neq 0 (
     echo   [WARNING] Failed to modify !PROG_ID! handler.
@@ -221,7 +253,7 @@ if !errorlevel! neq 0 (
     echo   Modified: !PROG_ID!\shell\open\command
 )
 
-rem Method 2: Also set the generic http/https handlers (fallback)
+rem Method 3: Also set the generic http/https handlers (fallback)
 reg add "HKEY_CLASSES_ROOT\http\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
 reg add "HKEY_CLASSES_ROOT\https\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
 echo   Modified: http and https protocol handlers
@@ -229,10 +261,10 @@ echo   Modified: http and https protocol handlers
 echo   Done.
 
 rem ==============================================
-rem Step 6: Configure QQ and WeChat to use external browser
+rem Step 7: Configure QQ and WeChat to use external browser
 rem ==============================================
 echo.
-echo [6/7] Configuring QQ and WeChat...
+echo [7/8] Configuring QQ and WeChat...
 
 set "APP_CONFIGURED=0"
 
@@ -268,10 +300,10 @@ if !APP_CONFIGURED! equ 0 (
 )
 
 rem ==============================================
-rem Step 7: Cleanup
+rem Step 8: Cleanup
 rem ==============================================
 echo.
-echo [7/7] Cleaning up...
+echo [8/8] Cleaning up...
 if exist "build" rd /s /q "build"
 if exist "dist" rd /s /q "dist"
 if exist "redirector.spec" del /f /q "redirector.spec"

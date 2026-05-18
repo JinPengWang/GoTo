@@ -16,6 +16,7 @@ import subprocess
 import logging
 import winreg
 import re
+import tempfile
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, List, Dict, Any
@@ -61,16 +62,25 @@ EDGE_REGISTRY_KEYS: List[Tuple[int, str]] = [
 
 def get_log_dir() -> Path:
     """获取日志目录，优先使用 %APPDATA%，回退到程序所在目录。"""
+    candidates: List[Path] = []
     try:
         appdata = os.environ.get("APPDATA")
         if appdata:
-            log_dir = Path(appdata) / APP_NAME / "logs"
-        else:
-            log_dir = get_app_dir() / "logs"
+            candidates.append(Path(appdata) / APP_NAME / "logs")
     except Exception:
-        log_dir = get_app_dir() / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    return log_dir
+        pass
+
+    candidates.append(get_app_dir() / "logs")
+    candidates.append(Path(tempfile.gettempdir()) / APP_NAME / "logs")
+
+    for log_dir in candidates:
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            return log_dir
+        except Exception:
+            continue
+
+    return Path(tempfile.gettempdir())
 
 
 def cleanup_old_logs(log_dir: Path) -> None:
@@ -200,6 +210,26 @@ def find_edge(custom_path: str = "") -> Optional[str]:
     return find_browser_by_candidates(EDGE_CANDIDATES)
 
 
+def is_goto_executable(path: str) -> bool:
+    """Return True when path points to this app's executable."""
+    if not path:
+        return False
+
+    candidates = [Path(sys.executable)]
+    if not getattr(sys, "frozen", False):
+        candidates.append(get_app_dir() / "GoTo.exe")
+
+    try:
+        target = Path(path).resolve()
+        return any(target == candidate.resolve() for candidate in candidates)
+    except OSError:
+        target = os.path.normcase(os.path.abspath(path))
+        return any(
+            target == os.path.normcase(os.path.abspath(str(candidate)))
+            for candidate in candidates
+        )
+
+
 def get_system_default_browser() -> Optional[str]:
     """获取系统默认浏览器路径（用于降级）。"""
     try:
@@ -214,11 +244,11 @@ def get_system_default_browser() -> Optional[str]:
             command, _ = winreg.QueryValueEx(key, "")
             # 提取引号内的路径
             match = re.match(r'"([^"]+)"', command)
-            if match and os.path.isfile(match.group(1)):
+            if match and os.path.isfile(match.group(1)) and not is_goto_executable(match.group(1)):
                 return match.group(1)
             # 无引号时取第一个空格前的部分
             parts = command.split()
-            if parts and os.path.isfile(parts[0]):
+            if parts and os.path.isfile(parts[0]) and not is_goto_executable(parts[0]):
                 return parts[0]
     except (OSError, FileNotFoundError, TypeError, IndexError):
         pass
@@ -359,9 +389,17 @@ def resolve_browser(
 
     # 目标浏览器未找到，尝试降级
     logger.warning(f"{name} 未找到，尝试降级到系统默认浏览器")
-    fallback = get_system_default_browser()
-    if fallback:
-        return fallback, f"系统默认({Path(fallback).stem})"
+    fallback_candidates: List[Tuple[Optional[str], str]] = []
+    if target == "chrome":
+        fallback_candidates.append((edge_path, "Microsoft Edge"))
+    elif target == "edge":
+        fallback_candidates.append((chrome_path, "Google Chrome"))
+
+    fallback_candidates.append((get_system_default_browser(), "system default"))
+
+    for fallback, fallback_name in fallback_candidates:
+        if fallback and os.path.isfile(fallback) and not is_goto_executable(fallback):
+            return fallback, f"{fallback_name}({Path(fallback).stem})"
 
     logger.error("没有可用的浏览器")
     return None, "无"

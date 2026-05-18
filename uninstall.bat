@@ -44,11 +44,15 @@ set "BACKUP_DIR=%cd%\backup"
 set "META_FILE=!BACKUP_DIR!\metadata.txt"
 set "PROG_ID="
 set "ORIG_CMD="
+set "EXE_PATH="
+set "USER_OVERRIDE_BACKED_UP=0"
 
 if exist "!META_FILE!" (
     for /f "usebackq tokens=1,* delims==" %%a in ("!META_FILE!") do (
         if "%%a"=="PROG_ID" set "PROG_ID=%%b"
         if "%%a"=="ORIG_CMD" set "ORIG_CMD=%%b"
+        if "%%a"=="EXE_PATH" set "EXE_PATH=%%b"
+        if "%%a"=="USER_OVERRIDE_BACKED_UP" set "USER_OVERRIDE_BACKED_UP=%%b"
     )
     echo   Found metadata.
     echo   ProgId: !PROG_ID!
@@ -69,6 +73,33 @@ set "RESTORED=0"
 rem Try to restore the default browser ProgId handler
 if defined PROG_ID (
     set "PROG_CMD_KEY=HKEY_CLASSES_ROOT\!PROG_ID!\shell\open\command"
+    set "USER_PROG_CMD_KEY=HKCU\Software\Classes\!PROG_ID!\shell\open\command"
+
+    rem Restore or remove the per-user override created during install.
+    if "!USER_OVERRIDE_BACKED_UP!"=="1" (
+        if exist "!BACKUP_DIR!\user_default_browser_backup.reg" (
+            reg import "!BACKUP_DIR!\user_default_browser_backup.reg" >nul 2>&1
+            if !errorlevel! equ 0 (
+                echo   Restored: per-user !PROG_ID! handler from backup file
+                set /a RESTORED+=1
+            )
+        )
+    ) else (
+        set "USER_CMD="
+        for /f "tokens=2*" %%a in ('reg query "!USER_PROG_CMD_KEY!" /ve 2^>nul ^| findstr /ve "HKEY"') do (
+            set "USER_CMD=%%b"
+        )
+        if defined USER_CMD (
+            echo !USER_CMD! | findstr /i /c:"GoTo.exe" >nul
+            if !errorlevel! equ 0 (
+                reg delete "!USER_PROG_CMD_KEY!" /f >nul 2>&1
+                if !errorlevel! equ 0 (
+                    echo   Removed: per-user !PROG_ID! handler
+                    set /a RESTORED+=1
+                )
+            )
+        )
+    )
 
     rem First try: restore from .reg backup file
     if exist "!BACKUP_DIR!\default_browser_backup.reg" (
