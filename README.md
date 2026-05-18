@@ -2,345 +2,195 @@
 
 # GoTo
 
-**Smart Browser Router for Windows**
+**Windows 智能浏览器路由器**
+
+[中文](README.md) | [English](README.en.md)
 
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-blue?style=flat-square)
-![Python](https://img.shields.io/badge/python-3.8%2B-green?style=flat-square)
+![Python](https://img.shields.io/badge/python-3.8%2B%20build%20only-green?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)
-![Size](https://img.shields.io/badge/exe_size-~6MB-orange?style=flat-square)
 
-根据域名规则，自动将链接分发给 Chrome 或 Edge 打开。
+根据域名规则，自动选择用 Chrome 或 Edge 打开外部链接。
 
-零后台进程 · 零资源占用 · 安装即忘
+无后台常驻进程 | 双击安装 | 规则可自定义
 
 </div>
 
 ---
 
-## Why GoTo?
+## GoTo 是什么
 
-在国内使用 Windows，系统默认浏览器是 Edge。但 GitHub、Google、YouTube 等网站需要 Chrome 才能正常访问（通常搭配代理）。每次都要手动复制链接到 Chrome？太低效了。
+GoTo 是一个 Windows 链接分流工具。安装后，当你从微信、QQ、邮件客户端、PDF 阅读器、Office 文档等外部应用点击网页链接时，Windows 会先调用 GoTo，GoTo 再根据 `rules.json` 中的域名规则决定使用 Chrome 还是 Edge 打开。
 
-GoTo 将自己注册为系统的链接处理器。点击任何链接时，Windows 自动调用 GoTo，GoTo 根据域名规则瞬间决定用 Chrome 还是 Edge 打开，然后立即退出。整个过程 < 0.1 秒，无窗口、无弹框、无感知。
+典型场景：
 
----
+- GitHub、Google、YouTube 等网站用 Chrome 打开。
+- 国内网站或未命中规则的网站默认用 Edge 打开。
+- `edge://`、`chrome://` 等浏览器内部链接会直接交给对应浏览器处理。
 
-## Features
+GoTo 不是后台服务。它只在点击链接时启动，完成分流后立即退出。
 
-- **Not a background process** — 由系统按需调用，执行完即退出，不常驻内存
-- **Lightweight** — exe 约 6MB，启动到退出 < 0.5s
-- **Invisible** — 无窗口、无托盘图标、无通知
-- **500+ preset rules** — 覆盖搜索、社交、开发、学术、云服务、AI 等 18 个类别
-- **Academic-friendly** — IEEE, ACM, Springer, Nature, Science, arXiv, OpenReview 等学术网站全覆盖
-- **Real-time customization** — 编辑 `rules.json` 即可增删规则，无需重启
-- **Smart fallback** — 目标浏览器未找到时自动降级到系统默认浏览器
-- **Internal URL protection** — `edge://`、`chrome://` 等浏览器内部 URL 不受影响
-- **microsoft-edge: protocol** — 自动处理 Windows 通知中心/开始菜单的强制 Edge 链接
-- **Faild** — QQ/WeChat 的内置浏览器绕过了 Windows 协议处理器，GoTo 无法直接拦截。UseDefaultBrowser 注册表键是一个最佳努力方案——部分版本的 QQ 会遵守，但某些链接（小程序、公众号）仍会被锁定在内置浏览器中。
+## 下载与安装
 
----
+普通用户请不要下载 GitHub 的源码 zip。请使用 Release 包。
 
-## Quick Start
+1. 打开 [GitHub Releases](https://github.com/JinPengWang/GoTo/releases)。
+2. 下载最新版本里的 **`GoTo-Windows.zip`**。
+3. 解压到一个长期保留的位置，例如 `D:\Apps\GoTo`。
+4. 双击 **`install.bat`**。
+5. Windows 弹出管理员授权时，选择允许。
 
-### Prerequisites
+Release 包已经包含 `GoTo.exe`。安装过程不需要 Python、pip、PyInstaller 或网络连接。
 
-| Requirement        | Notes                                                                     |
-| ------------------ | ------------------------------------------------------------------------- |
-| Windows 10/11      | Required                                                                  |
-| Python 3.8+        | Only required when building from source                                   |
-| Chrome and/or Edge | At least one installed                                                    |
+如果之后突然失效，先双击 **`repair.bat`**。它会检查文件是否存在、规则是否有效，并重新写入注册表处理器。
 
-### Recommended Install
+## 卸载
 
-For normal users, download **`GoTo-Windows.zip`** from [GitHub Releases](https://github.com/JinPengWang/Goto/releases), extract it, then double-click **`install.bat`**.
+双击 **`uninstall.bat`**，按提示确认。卸载脚本会尽量恢复安装前备份的浏览器处理器，并移除安装时写入的 QQ/微信配置。
 
-The release zip already includes `GoTo.exe`; installation does not require Python, pip, PyInstaller, or network access.
+## 功能
 
-If GoTo stops working later, double-click **`repair.bat`**.
+- 按域名规则自动选择 Chrome 或 Edge。
+- 不常驻后台，不占用持续内存和 CPU。
+- 预置 500+ 常见网站规则。
+- 编辑 `rules.json` 后立即生效。
+- 目标浏览器找不到时自动降级到可用浏览器。
+- 保护 `edge://`、`chrome://`、`about:` 等内部 URL。
+- 支持 `microsoft-edge:` 链接前缀的常规化处理。
+- 安装时会尝试让 QQ、QQNT、微信使用系统默认浏览器打开外部链接。
 
-### Build from Source
+## 配置规则
 
-```bash
-git clone https://github.com/JinPengWang/Goto.git
-cd Goto
+配置文件是 `rules.json`。
+
+基本结构：
+
+```json
+{
+  "browser_paths": {
+    "chrome": "",
+    "edge": ""
+  },
+  "rules": [
+    {
+      "name": "Development",
+      "browser": "chrome",
+      "domains": ["github.com", "stackoverflow.com"]
+    },
+    {
+      "name": "Fallback",
+      "browser": "edge",
+      "domains": ["*"]
+    }
+  ]
+}
 ```
 
-For developers, install build dependencies first:
+规则说明：
 
-```bash
+- 规则按顺序匹配，先命中先使用。
+- `*` 表示兜底规则，建议放在最后。
+- 子域名会继承父域名规则，例如 `gist.github.com` 会匹配 `github.com`。
+- `browser` 目前支持 `chrome` 和 `edge`。
+- `browser_paths` 留空时自动探测浏览器路径；探测失败时可以手动填写 exe 路径。
+
+## 工作原理
+
+```text
+用户在外部应用中点击链接
+        |
+        v
+Windows 查询当前默认浏览器的 URL 处理器
+        |
+        v
+调用 GoTo.exe，并把 URL 作为参数传入
+        |
+        v
+GoTo 读取 rules.json，提取域名并匹配规则
+        |
+        v
+启动 Chrome 或 Edge 打开链接
+        |
+        v
+GoTo 退出
+```
+
+安装脚本会修改当前默认浏览器 ProgId 的 `shell\open\command`。这是 GoTo 能拦截外部应用链接的关键。脚本会先备份原始注册表项，卸载时再尝试恢复。
+
+## 安全与杀毒软件
+
+GoTo 是开源项目，但 Release 中的 `GoTo.exe` 目前未做代码签名。Windows SmartScreen 或杀毒软件可能因为“未签名可执行文件”和“修改浏览器处理器注册表”而给出警告。
+
+建议：
+
+- 只从本项目的 GitHub Releases 下载。
+- 对照 Release 包里的 `SHA256SUMS.txt` 验证文件完整性。
+- 如果 `GoTo.exe` 安装后消失，检查 Windows Security 的保护历史或杀毒软件隔离区。
+- 不建议关闭杀毒软件；如果误报，请基于源码和哈希自行判断是否信任。
+
+## 常见问题
+
+### 安装失败，提示找不到 GoTo.exe
+
+你下载的可能是 GitHub 源码 zip。普通用户请下载 Releases 页面中的 `GoTo-Windows.zip`。
+
+### 链接突然不再分流
+
+先运行 `repair.bat`。如果仍然失败，检查：
+
+- `GoTo.exe` 是否还在安装目录。
+- `rules.json` 是否是合法 JSON。
+- Windows Security 或杀毒软件是否隔离了 `GoTo.exe`。
+- 点击链接的应用是否缓存了浏览器设置，必要时重启该应用。
+
+### QQ 或微信仍然用内置浏览器打开
+
+GoTo 只能处理交给 Windows 默认浏览器的链接。QQ、微信的部分链接会绕过 Windows 协议处理器，直接在内置浏览器中打开。安装脚本会写入 `UseDefaultBrowser = 1`，但某些小程序、公众号或支付相关链接仍可能被应用锁定，这是应用自身限制。
+
+### 点击 Edge 内部页面的链接是否会被分流
+
+不会。浏览器内部打开的链接通常由浏览器自己处理，GoTo 主要处理外部应用发起的 URL 打开请求。
+
+## 从源码构建
+
+普通用户不需要执行本节。
+
+```bat
+git clone https://github.com/JinPengWang/GoTo.git
+cd GoTo
 python -m pip install -r requirements-build.txt
 build.bat
 install.bat
 ```
 
-### Uninstall
+`build.bat` 会生成 `GoTo.exe` 和 `SHA256SUMS.txt`。安装脚本本身不会联网安装构建依赖。
 
-Double-click **`uninstall.bat`** — everything restored to original state.
+## 项目文件
 
----
-
-## How It Works
-
-```
-User clicks a link (from any app: WeChat, email, PDF reader, etc.)
-    │
-    ▼
-Windows looks up UserChoice → finds MSEdgeHTM ProgId
-    │
-    ▼
-MSEdgeHTM\shell\open\command → points to GoTo.exe
-    │
-    ▼
-GoTo.exe receives URL as argument
-    │
-    ├─ Is it edge://, chrome://, about:?  →  Pass to corresponding browser directly
-    ├─ Is it microsoft-edge:https://...?  →  Strip prefix, apply normal rules
-    │
-    ▼
-Extract domain from URL, match against rules.json (first match wins)
-    │
-    ├─ Matched "chrome" rule  →  Open in Chrome
-    ├─ Matched "edge" rule    →  Open in Edge
-    └─ No match              →  Use fallback rule (default: Edge)
-    │
-    ▼
-GoTo.exe exits immediately (< 0.5s)
-```
-
----
-
-## Configuration
-
-The configuration file is `rules.json`. Edit it — changes take effect immediately, no restart needed.
-
-### Structure
-
-```json
-{
-    "browser_paths": {
-        "chrome": "",
-        "edge": ""
-    },
-    "rules": [
-        {
-            "name": "Development & Tech",
-            "browser": "chrome",
-            "domains": ["github.com", "stackoverflow.com"]
-        },
-        {
-            "name": "Fallback - everything else uses Edge",
-            "browser": "edge",
-            "domains": ["*"]
-        }
-    ]
-}
-```
-
-### Adding a website
-
-Find the relevant rule group, add the domain to the `domains` array:
-
-```json
-{
-    "name": "Development & Tech",
-    "browser": "chrome",
-    "domains": ["github.com", "stackoverflow.com", "mysite.com"]
-}
-```
-
-### Creating a new rule group
-
-```json
-{
-    "name": "My Custom Sites",
-    "browser": "chrome",
-    "domains": ["notion.so", "figma.com", "linear.app"]
-}
-```
-
-### Forcing a site to use Edge
-
-```json
-{
-    "name": "Force Edge",
-    "browser": "edge",
-    "domains": ["example.com"]
-}
-```
-
-### Specifying browser paths manually
-
-If auto-detection fails, set the path in `browser_paths`:
-
-```json
-{
-    "browser_paths": {
-        "chrome": "D:\\Apps\\Chrome\\chrome.exe",
-        "edge": ""
-    }
-}
-```
-
-Leave empty `""` for auto-detection. Auto-detection checks: registry → `%ProgramFiles%` → `%LocalAppData%`.
-
-### Matching rules
-
-- Rules are matched **in order**, first match wins
-- `*` matches all domains (use as fallback, always put last)
-- Subdomains inherit parent rules: `gist.github.com` matches `github.com`
-
----
-
-## Preset Rules (500+ domains)
-
-| Category            | Examples                                                                     |
-| ------------------- | ---------------------------------------------------------------------------- |
-| Search & Email      | google.com, gmail.com, outlook.live.com, yahoo.com                           |
-| Video               | youtube.com, vimeo.com, twitch.tv, tiktok.com                                |
-| Social Media        | twitter.com, facebook.com, instagram.com, reddit.com, linkedin.com           |
-| Dev & Tech          | github.com, gitlab.com, stackoverflow.com, docker.com, vercel.com            |
-| Cloud Services      | AWS, Azure, Google Cloud, Cloudflare, Fastly, Akamai                         |
-| Academic Publishers | IEEE, ACM, Springer, Nature, Science, Elsevier, Wiley, JSTOR, arXiv, bioRxiv |
-| Academic Tools      | Semantic Scholar, OpenReview, Papers with Code, Overleaf, Zotero             |
-| AI & ML             | openai.com, claude.ai, huggingface.co, pytorch.org, kaggle.com               |
-| Online Learning     | coursera.org, edx.org, udemy.com, leetcode.com                               |
-| Cloud & Office      | notion.so, dropbox.com, slack.com, zoom.us, figma.com                        |
-| E-Commerce          | amazon.com, ebay.com, etsy.com, aliexpress.com                               |
-| News                | cnn.com, bbc.com, nytimes.com, reuters.com, bloomberg.com                    |
-| Design              | dribbble.com, behance.net, adobe.com, unsplash.com                           |
-| VPN & Privacy       | expressvpn.com, protonvpn.com, torproject.org, eff.org                       |
-
-All unmatched domains default to Edge.
-
----
-
-## Logging
-
-Every invocation is logged with: timestamp, original URL, matched rule, browser used.
-
-**Log location:** `%APPDATA%\GoTo\logs\`
-
-Logs auto-rotate: files older than 30 days are deleted automatically.
-
----
-
-## FAQ
-
-### Links not routing after install?
-
-1. Confirm `install.bat` ran as admin and showed "INSTALLATION COMPLETE"
-2. Confirm `GoTo.exe` exists in the project directory
-3. Some apps cache browser settings — restart the app
-4. Check logs at `%APPDATA%\GoTo\logs\`
-
-### Does it consume system resources?
-
-No. GoTo is not a background process. It runs only when you click a link, exits immediately after opening the browser. No memory, no CPU, no startup entry.
-
-### How to temporarily disable?
-
-Run `uninstall.bat`. Re-run `install.bat` when needed. Takes seconds.
-
-### Will it break my default browser setting?
-
-No. GoTo only modifies the browser's command handler, not the system default browser setting. Uninstall restores everything.
-
-### Does it work for links clicked inside Edge?
-
-No. Links clicked inside Edge are handled by Edge internally — GoTo never sees them. This applies to Edge's built-in PDF viewer, Edge's address bar, etc. For links from **external apps** (Word, Adobe Reader, WeChat, email clients, etc.), GoTo works perfectly.
-
-> **Tip:** For PDF files, use an external reader like Adobe Acrobat or SumatraPDF instead of opening them in Edge. Links in those PDFs will be routed by GoTo.
-
-### Links in QQ / WeChat open in the built-in browser?
-
-QQ and WeChat use an embedded Chromium browser to open links internally, bypassing the Windows protocol handler entirely. This means GoTo cannot intercept those links.
-
-**What GoTo does automatically:** During installation, GoTo sets the `UseDefaultBrowser = 1` registry key for QQ, QQNT, and WeChat. This tells them to use the system default browser instead of the built-in one.
-
-**If links still open in the built-in browser:**
-
-For QQ:
-
-1. Open QQ Settings (设置) → General (基本设置)
-2. Find and enable "使用默认浏览器打开链接" (Open links with default browser)
-
-For WeChat:
-
-1. Open WeChat Settings (设置) → General (通用设置)
-2. Find and enable "使用默认浏览器打开链接"
-3. Or: when a link opens in WeChat's browser, tap the `...` menu → "在默认浏览器中打开"
-
-**Limitations:** Some links (mini-programs, official accounts, WeChat Pay) are intentionally locked to the built-in browser and cannot be redirected. This is by design and cannot be changed.
-
-### Support other browsers?
-
-Currently Chrome and Edge only. To add Firefox/Brave, modify `redirector.py`. PRs welcome.
-
----
-
-## Project Structure
-
-```
+```text
 GoTo/
-├── redirector.py       # Core logic
-├── rules.json          # Domain rules (500+ domains)
-├── install.bat         # One-click install (asks for admin)
-├── uninstall.bat       # One-click uninstall
-├── README.md           # This file
-├── .gitignore          # Git ignore rules
-└── LICENSE             # MIT License
+  redirector.py              核心分流逻辑
+  rules.json                 域名规则
+  install.bat                用户安装脚本
+  repair.bat                 修复脚本
+  uninstall.bat              卸载脚本
+  build.bat                  开发者构建脚本
+  requirements-build.txt     构建依赖
+  version_info.txt           Windows exe 版本信息
+  .github/workflows/         Release 自动打包
 ```
 
-After install, additional files are generated:
+不会提交到仓库的本机生成物：
 
+```text
+GoTo.exe
+backup/
+logs/
+build/
+dist/
+__pycache__/
 ```
-GoTo/
-├── GoTo.exe            # Built executable (~6MB)
-└── backup/             # Registry backups (for uninstall)
-```
 
----
+## 许可证
 
-## Technical Details
-
-### Protocol hijacking
-
-Windows 10/11 uses `UserChoice` (with anti-tampering Hash) to determine which browser handles URLs. This cannot be directly modified. GoTo works around this by modifying the **command handler** of the current default browser's ProgId (e.g., `MSEdgeHTM`). All "open in Edge" requests go through GoTo first.
-
-### microsoft-edge: protocol
-
-Windows Start Menu, Notification Center, and Cortana use `microsoft-edge:` prefix to force-open links in Edge. GoTo automatically strips this prefix and applies normal routing rules.
-
-### Internal URL protection
-
-`edge://`, `chrome://`, `about:`, `data:`, `blob:` URLs are detected and passed directly to the corresponding browser. GoTo never interferes with browser internals.
-
-### Graceful degradation
-
-If the target browser is not found, GoTo falls back to the system default browser. If even that fails, the URL is passed to `os.startfile()` (Windows native). No link is ever lost.
-
----
-
-## Contributing
-
-Contributions welcome!
-
-1. Fork this repo
-2. Create a branch: `git checkout -b feature/my-feature`
-3. Commit: `git commit -m 'Add my feature'`
-4. Push: `git push origin feature/my-feature`
-5. Open a Pull Request
-
----
-
-## License
-
-[MIT](LICENSE)
-
----
-
-<div align="center">
-
-**If this project helps you, give it a star!**
-
-</div>
+本项目使用 [MIT License](LICENSE)。

@@ -44,10 +44,10 @@ jobs:
           Copy-Item install.bat release\GoTo\
           Copy-Item uninstall.bat release\GoTo\
           Copy-Item repair.bat release\GoTo\
-          Copy-Item README_INSTALL.txt release\GoTo\
           Copy-Item README.md release\GoTo\
+          Copy-Item README.en.md release\GoTo\
           Copy-Item LICENSE release\GoTo\
-          $files = @('GoTo.exe','rules.json','install.bat','uninstall.bat','repair.bat','README_INSTALL.txt','README.md','LICENSE')
+          $files = @('GoTo.exe','rules.json','install.bat','uninstall.bat','repair.bat','README.md','README.en.md','LICENSE')
           Push-Location release\GoTo
           $files | ForEach-Object {
             $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $_
