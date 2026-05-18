@@ -47,19 +47,31 @@ GoTo 将自己注册为系统的链接处理器。点击任何链接时，Window
 | Requirement        | Notes                                                                     |
 | ------------------ | ------------------------------------------------------------------------- |
 | Windows 10/11      | Required                                                                  |
-| Python 3.8+        | [Download](https://www.python.org/downloads/), check "Add Python to PATH" |
+| Python 3.8+        | Only required when building from source                                   |
 | Chrome and/or Edge | At least one installed                                                    |
 
-### Install
+### Recommended Install
+
+For normal users, download **`GoTo-Windows.zip`** from [GitHub Releases](https://github.com/JinPengWang/Goto/releases), extract it, then double-click **`install.bat`**.
+
+The release zip already includes `GoTo.exe`; installation does not require Python, pip, PyInstaller, or network access.
+
+If GoTo stops working later, double-click **`repair.bat`**.
+
+### Build from Source
 
 ```bash
-git clone https://github.com/your-username/GoTo.git
-cd GoTo
+git clone https://github.com/JinPengWang/Goto.git
+cd Goto
 ```
 
-Double-click **`install.bat`** — done.
+For developers, install build dependencies first:
 
-The script will: find Python → install PyInstaller → build exe → backup registry → register as link handler.
+```bash
+python -m pip install -r requirements-build.txt
+build.bat
+install.bat
+```
 
 ### Uninstall
 
