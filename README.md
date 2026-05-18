@@ -21,7 +21,7 @@
 
 在国内使用 Windows，系统默认浏览器是 Edge。但 GitHub、Google、YouTube 等网站需要 Chrome 才能正常访问（通常搭配代理）。每次都要手动复制链接到 Chrome？太低效了。
 
-GoTo 将自己注册为系统的链接处理器。点击任何链接时，Windows 自动调用 GoTo，GoTo 根据域名规则瞬间决定用 Chrome 还是 Edge 打开，然后立即退出。整个过程 < 0.5 秒，无窗口、无弹框、无感知。
+GoTo 将自己注册为系统的链接处理器。点击任何链接时，Windows 自动调用 GoTo，GoTo 根据域名规则瞬间决定用 Chrome 还是 Edge 打开，然后立即退出。整个过程 < 0.1 秒，无窗口、无弹框、无感知。
 
 ---
 
