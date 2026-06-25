@@ -147,10 +147,30 @@ if !RESTORED! equ 0 (
 )
 
 rem ==============================================
-rem Step 3: Remove QQ and WeChat browser configuration
+rem Step 3: Remove scheduled maintenance tasks
 rem ==============================================
 echo.
-echo [3/5] Removing QQ and WeChat configuration...
+echo [3/6] Removing scheduled tasks...
+
+schtasks /delete /tn "GoTo-Maintain" /f >nul 2>&1
+if !errorlevel! equ 0 (
+    echo   Removed: GoTo-Maintain
+) else (
+    echo   GoTo-Maintain task not found.
+)
+
+schtasks /delete /tn "GoTo-Maintain-Scheduled" /f >nul 2>&1
+if !errorlevel! equ 0 (
+    echo   Removed: GoTo-Maintain-Scheduled
+) else (
+    echo   GoTo-Maintain-Scheduled task not found.
+)
+
+rem ==============================================
+rem Step 4: Remove QQ and WeChat browser configuration
+rem ==============================================
+echo.
+echo [4/6] Removing QQ and WeChat configuration...
 
 set "APP_CLEANED=0"
 
@@ -183,10 +203,10 @@ if !APP_CLEANED! equ 0 (
 )
 
 rem ==============================================
-rem Step 4: Delete program files
+rem Step 5: Delete program files
 rem ==============================================
 echo.
-echo [4/5] Removing program files...
+echo [5/6] Removing program files...
 
 if exist "GoTo.exe" (
     del /f /q "GoTo.exe"
@@ -198,10 +218,10 @@ if exist "GoTo.exe" (
 if exist "redirector.spec" del /f /q "redirector.spec"
 
 rem ==============================================
-rem Step 5: Cleanup
+rem Step 6: Cleanup
 rem ==============================================
 echo.
-echo [5/5] Cleaning up...
+echo [6/6] Cleaning up...
 
 if exist "build" rd /s /q "build" && echo   Deleted: build/
 if exist "dist" rd /s /q "dist" && echo   Deleted: dist/

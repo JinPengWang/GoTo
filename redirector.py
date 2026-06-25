@@ -106,14 +106,27 @@ def setup_logger() -> logging.Logger:
     cleanup_old_logs(log_dir)
 
     today = datetime.now().strftime("%Y-%m-%d")
-    log_file = log_dir / f"goto_{today}.log"
 
     logger = logging.getLogger(APP_NAME)
     logger.setLevel(logging.DEBUG)
 
     # 避免重复添加 handler
     if not logger.handlers:
-        handler = logging.FileHandler(str(log_file), encoding="utf-8")
+        handler: logging.Handler
+        for candidate_dir in (
+            log_dir,
+            get_app_dir() / "logs",
+            Path(tempfile.gettempdir()) / APP_NAME / "logs",
+        ):
+            try:
+                candidate_dir.mkdir(parents=True, exist_ok=True)
+                log_file = candidate_dir / f"goto_{today}.log"
+                handler = logging.FileHandler(str(log_file), encoding="utf-8")
+                break
+            except Exception:
+                continue
+        else:
+            handler = logging.NullHandler()
         handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
             "%(asctime)s | %(levelname)-7s | %(message)s",
@@ -496,6 +509,62 @@ def handle_internal_url(url: str, edge_path: Optional[str], chrome_path: Optiona
 
 
 # ============================================================
+# 自修复
+# ============================================================
+
+def self_repair() -> None:
+    """
+    检查并修复 GoTo 的注册表注册。
+    由计划任务定期调用，或通过 --self-repair 标志手动触发。
+    只写入 HKCU（无需管理员权限）。
+    """
+    try:
+        # 检测当前默认浏览器 ProgId
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice"
+        ) as key:
+            prog_id, _ = winreg.QueryValueEx(key, "ProgId")
+    except (OSError, FileNotFoundError):
+        prog_id = "MSEdgeHTM"
+
+    exe_path = str(Path(sys.executable).resolve()) if getattr(sys, 'frozen', False) else str(get_app_dir() / "GoTo.exe")
+    new_cmd = f'"{exe_path}" "%1"'
+
+    # 检查当前 HKCU 处理器是否已指向 GoTo
+    user_cmd_key = rf"Software\Classes\{prog_id}\shell\open\command"
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, user_cmd_key) as key:
+            current_cmd, _ = winreg.QueryValueEx(key, "")
+            if "GoTo.exe" in current_cmd.lower():
+                logger.debug("注册表正常，无需修复")
+                return
+    except (OSError, FileNotFoundError):
+        pass
+
+    # 需要修复：写入 HKCU（无需管理员权限）
+    logger.info(f"修复注册表: {prog_id} -> GoTo.exe")
+    try:
+        with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, user_cmd_key, 0, winreg.KEY_SET_VALUE) as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, new_cmd)
+        logger.info("HKCU 修复成功")
+    except OSError as e:
+        logger.error(f"HKCU 修复失败: {e}")
+
+    # 尝试写入 HKCR（可能需要管理员权限，失败不报错）
+    for key_path in [
+        rf"{prog_id}\shell\open\command",
+        r"http\shell\open\command",
+        r"https\shell\open\command",
+    ]:
+        try:
+            with winreg.CreateKeyEx(winreg.HKEY_CLASSES_ROOT, key_path, 0, winreg.KEY_SET_VALUE) as key:
+                winreg.SetValueEx(key, "", 0, winreg.REG_SZ, new_cmd)
+        except OSError:
+            pass
+
+
+# ============================================================
 # 主流程
 # ============================================================
 
@@ -527,6 +596,11 @@ def clean_url(raw: str) -> str:
 
 def main() -> None:
     """主入口函数。"""
+    # 处理特殊标志
+    if len(sys.argv) >= 2 and sys.argv[1] in ("--self-repair", "--maintain"):
+        self_repair()
+        return
+
     # 1. 获取 URL 参数
     if len(sys.argv) < 2:
         logger.warning("未接收到 URL 参数，退出")

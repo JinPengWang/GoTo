@@ -197,7 +197,7 @@ rem ==============================================
 rem Step 6: Health check
 rem ==============================================
 echo.
-echo [6/7] Running health check...
+echo [6/8] Running health check...
 
 if not exist "!EXE_PATH!" (
     echo.
@@ -228,10 +228,34 @@ echo   Registry handler points to GoTo.exe.
 echo   GoTo.exe is present.
 
 rem ==============================================
-rem Step 7: Finish
+rem Step 7: Set up automatic maintenance
 rem ==============================================
 echo.
-echo [7/7] Done.
+echo [7/8] Setting up automatic maintenance...
+
+rem Create scheduled task: run at user logon (1 min delay)
+schtasks /create /tn "GoTo-Maintain" /tr "\"%cd%\goto-maintain.bat\"" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
+if !errorlevel! equ 0 (
+    echo   Created task: GoTo-Maintain (at logon)
+) else (
+    echo   [WARNING] Failed to create logon task.
+)
+
+rem Create scheduled task: run every 4 hours
+schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"%cd%\goto-maintain.bat\"" /sc hourly /mo 4 /rl limited /f >nul 2>&1
+if !errorlevel! equ 0 (
+    echo   Created task: GoTo-Maintain-Scheduled (every 4 hours)
+) else (
+    echo   [WARNING] Failed to create periodic task.
+)
+
+echo   GoTo will auto-repair if registration is reset by browser or Windows updates.
+
+rem ==============================================
+rem Step 8: Finish
+rem ==============================================
+echo.
+echo [8/8] Done.
 echo.
 echo ============================================================
 echo.

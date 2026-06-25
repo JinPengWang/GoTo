@@ -96,7 +96,7 @@ reg add "HKEY_CLASSES_ROOT\https\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!
 echo   Re-registered protocol handler.
 
 echo.
-echo [4/5] Checking QQ and WeChat...
+echo [4/6] Checking QQ and WeChat...
 
 set "APP_CONFIGURED=0"
 reg query "HKCU\Software\Tencent\QQ" >nul 2>&1
@@ -123,7 +123,25 @@ if !errorlevel! equ 0 (
 if !APP_CONFIGURED! equ 0 echo   QQ and WeChat not found.
 
 echo.
-echo [5/5] Health check...
+echo [5/6] Ensuring scheduled tasks exist...
+
+rem Re-create scheduled tasks (idempotent — /f overwrites if exists)
+schtasks /create /tn "GoTo-Maintain" /tr "\"%cd%\goto-maintain.bat\"" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
+if !errorlevel! equ 0 (
+    echo   Verified: GoTo-Maintain (at logon)
+) else (
+    echo   [WARNING] Failed to create logon task.
+)
+
+schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"%cd%\goto-maintain.bat\"" /sc hourly /mo 4 /rl limited /f >nul 2>&1
+if !errorlevel! equ 0 (
+    echo   Verified: GoTo-Maintain-Scheduled (every 4 hours)
+) else (
+    echo   [WARNING] Failed to create periodic task.
+)
+
+echo.
+echo [6/6] Health check...
 
 set "CURRENT_CMD="
 for /f "tokens=2*" %%a in ('reg query "!USER_PROG_CMD_KEY!" /ve 2^>nul ^| findstr /ve "HKEY"') do (
