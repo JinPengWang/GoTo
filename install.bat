@@ -234,7 +234,7 @@ echo.
 echo [7/8] Setting up automatic maintenance...
 
 rem Create scheduled task: run at user logon (1 min delay)
-schtasks /create /tn "GoTo-Maintain" /tr "\"%cd%\goto-maintain.bat\"" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
+schtasks /create /tn "GoTo-Maintain" /tr "wscript.exe \"%cd%\goto-maintain.vbs\"" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Created task: GoTo-Maintain (at logon)
 ) else (
@@ -242,7 +242,7 @@ if !errorlevel! equ 0 (
 )
 
 rem Create scheduled task: run every 4 hours
-schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"%cd%\goto-maintain.bat\"" /sc hourly /mo 4 /rl limited /f >nul 2>&1
+schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "wscript.exe \"%cd%\goto-maintain.vbs\"" /sc hourly /mo 4 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Created task: GoTo-Maintain-Scheduled (every 4 hours)
 ) else (
