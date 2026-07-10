@@ -126,14 +126,15 @@ echo.
 echo [5/6] Ensuring scheduled tasks exist...
 
 rem Re-create scheduled tasks (idempotent — /f overwrites if exists)
-schtasks /create /tn "GoTo-Maintain" /tr "wscript.exe \"%cd%\goto-maintain.vbs\"" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
+rem Use GoTo.exe --maintain directly (compiled with --noconsole, no window)
+schtasks /create /tn "GoTo-Maintain" /tr "\"%cd%\GoTo.exe\" --maintain" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Verified: GoTo-Maintain (at logon)
 ) else (
     echo   [WARNING] Failed to create logon task.
 )
 
-schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "wscript.exe \"%cd%\goto-maintain.vbs\"" /sc hourly /mo 4 /rl limited /f >nul 2>&1
+schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"%cd%\GoTo.exe\" --maintain" /sc hourly /mo 4 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Verified: GoTo-Maintain-Scheduled (every 4 hours)
 ) else (

@@ -6,7 +6,7 @@ rem  GoTo - Silent self-healing script
 rem ============================================================
 rem  Runs via Task Scheduler to keep GoTo registration alive.
 rem  No admin rights required (writes to HKCU only).
-rem  No output, no pauses â€” completely silent.
+rem  No output, no pauses â€?completely silent.
 rem ============================================================
 
 cd /d "%~dp0"
@@ -41,7 +41,6 @@ reg add "!USER_PROG_CMD_KEY!" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
 rem Also try system-wide handlers (best-effort, may need admin)
 set "PROG_CMD_KEY=HKEY_CLASSES_ROOT\!PROG_ID!\shell\open\command"
 reg add "!PROG_CMD_KEY!" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
-reg add "HKEY_CLASSES_ROOT\http\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
-reg add "HKEY_CLASSES_ROOT\https\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
 
 exit /b 0
+

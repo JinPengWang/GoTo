@@ -103,8 +103,6 @@ set "USER_OVERRIDE_BACKED_UP=0"
 reg export "!PROG_CMD_KEY!" "!BACKUP_DIR!\default_browser_backup.reg" /y >nul 2>&1
 reg export "!USER_PROG_CMD_KEY!" "!BACKUP_DIR!\user_default_browser_backup.reg" /y >nul 2>&1
 if !errorlevel! equ 0 set "USER_OVERRIDE_BACKED_UP=1"
-reg export "HKEY_CLASSES_ROOT\http\shell\open\command" "!BACKUP_DIR!\http_backup.reg" /y >nul 2>&1
-reg export "HKEY_CLASSES_ROOT\https\shell\open\command" "!BACKUP_DIR!\https_backup.reg" /y >nul 2>&1
 
 set "ORIG_CMD="
 for /f "tokens=2*" %%a in ('reg query "!PROG_CMD_KEY!" /ve 2^>nul ^| findstr /ve "HKEY"') do (
@@ -145,8 +143,6 @@ if !errorlevel! neq 0 (
     echo   Modified: !PROG_ID!\shell\open\command
 )
 
-reg add "HKEY_CLASSES_ROOT\http\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
-reg add "HKEY_CLASSES_ROOT\https\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
 echo   Modified: http and https fallback handlers
 
 if !REGISTER_ERRORS! neq 0 (
@@ -234,7 +230,8 @@ echo.
 echo [7/8] Setting up automatic maintenance...
 
 rem Create scheduled task: run at user logon (1 min delay)
-schtasks /create /tn "GoTo-Maintain" /tr "wscript.exe \"%cd%\goto-maintain.vbs\"" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
+rem Use GoTo.exe --maintain directly (compiled with --noconsole, no window)
+schtasks /create /tn "GoTo-Maintain" /tr "\"%cd%\GoTo.exe\" --maintain" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Created task: GoTo-Maintain (at logon)
 ) else (
@@ -242,7 +239,7 @@ if !errorlevel! equ 0 (
 )
 
 rem Create scheduled task: run every 4 hours
-schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "wscript.exe \"%cd%\goto-maintain.vbs\"" /sc hourly /mo 4 /rl limited /f >nul 2>&1
+schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"%cd%\GoTo.exe\" --maintain" /sc hourly /mo 4 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Created task: GoTo-Maintain-Scheduled (every 4 hours)
 ) else (
@@ -271,3 +268,4 @@ echo   If GoTo stops working, run repair.bat.
 echo   Run uninstall.bat to remove and restore original settings.
 echo.
 pause
+
