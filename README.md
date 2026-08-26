@@ -7,12 +7,13 @@
 [中文](README.md) | [English](README.en.md)
 
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-blue?style=flat-square)
-![Python](https://img.shields.io/badge/python-3.8%2B%20build%20only-green?style=flat-square)
+![Go](https://img.shields.io/badge/go-1.21%2B-blue?style=flat-square)
+![Python](https://img.shields.io/badge/python-3.8%2B-green?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)
 
 根据域名规则，自动选择用 Chrome 或 Edge 打开外部链接。
 
-无后台常驻进程 | 双击安装 | 规则可自定义
+无后台常驻进程 | 瞬间唤起秒开 | 规则可自定义 | 双击一键安装
 
 </div>
 
@@ -24,11 +25,12 @@ GoTo 是一个 Windows 链接分流工具。安装后，当你从微信、QQ、�
 
 典型场景：
 
-- GitHub、Google、YouTube 等网站用 Chrome 打开。
+- GitHub、Google、YouTube、StackOverflow 等网站用 Chrome 打开。
 - 国内网站或未命中规则的网站默认用 Edge 打开。
 - `edge://`、`chrome://` 等浏览器内部链接会直接交给对应浏览器处理。
+- 支持无协议链接（如 `github.com`）自动补齐并分流。
 
-GoTo 不是后台服务。它只在点击链接时启动，完成分流后立即退出。
+GoTo 不是后台常驻服务。它只在点击链接时启动，完成分流后立即退出。
 
 ## 下载与安装
 
@@ -40,24 +42,39 @@ GoTo 不是后台服务。它只在点击链接时启动，完成分流后立即
 4. 双击 **`install.bat`**。
 5. Windows 弹出管理员授权时，选择允许。
 
-Release 包已经包含 `GoTo.exe`。安装过程不需要 Python、pip、PyInstaller 或网络连接。
+Release 包已经包含预编译好的 `GoTo.exe`。安装过程不需要 Python、Go、pip 或网络连接。
 
 如果之后突然失效，先双击 **`repair.bat`**。它会检查文件是否存在、规则是否有效，并重新写入注册表处理器。
 
 ## 卸载
 
-双击 **`uninstall.bat`**，按提示确认。卸载脚本会尽量恢复安装前备份的浏览器处理器，并移除安装时写入的 QQ/微信配置。
+双击 **`uninstall.bat`**，按提示确认。卸载脚本会恢复安装前备份的浏览器处理器，并移除安装时写入的 QQ/微信配置，**不会误删您的程序与规则文件**。
 
-## 功能
+## 功能特性
 
-- 按域名规则自动选择 Chrome 或 Edge。
-- 不常驻后台，不占用持续内存和 CPU。
-- 预置 500+ 常见网站规则。
-- 编辑 `rules.json` 后立即生效。
-- 目标浏览器找不到时自动降级到可用浏览器。
-- 保护 `edge://`、`chrome://`、`about:` 等内部 URL。
-- 支持 `microsoft-edge:` 链接前缀的常规化处理。
-- 安装时会尝试让 QQ、QQNT、微信使用系统默认浏览器打开外部链接。
+- **超快响应**：不常驻后台，零内存与 CPU 持续占用。
+- **直觉通配符**：支持 `*.github.com`、`google.*` 等通用通配规则。
+- **参数注入防御**：严格过滤恶意命令行参数与 `javascript:` 等不安全伪协议。
+- **预置规则丰富**：内置 500+ 常见网站规则。
+- **即时生效**：编辑 `rules.json` 后立即生效，无需重启。
+- **安全降级**：目标浏览器找不到时自动安全降级到系统可用浏览器，杜绝循环死锁。
+- **内部协议保护**：保护 `edge://`、`chrome://`、`about:` 等内部 URL。
+- **Windows 深度适配**：支持 `microsoft-edge:` 链接前缀与查询参数解码。
+- **应用外链优化**：安装时会自动配置 QQ、QQNT、微信优先使用系统默认浏览器。
+
+## 调试与自检指令
+
+在命令提示符或 PowerShell 中进入 GoTo 所在目录：
+
+- **测试某条链接命中哪个浏览器**：
+  ```bat
+  GoTo.exe --test "https://github.com"
+  GoTo.exe --test "bilibili.com"
+  ```
+- **一键校验规则与浏览器环境**：
+  ```bat
+  GoTo.exe --validate
+  ```
 
 ## 配置规则
 
@@ -73,12 +90,17 @@ Release 包已经包含 `GoTo.exe`。安装过程不需要 Python、pip、PyInst
   },
   "rules": [
     {
-      "name": "Development",
+      "name": "开发与外网",
       "browser": "chrome",
-      "domains": ["github.com", "stackoverflow.com"]
+      "domains": [
+        "github.com",
+        "*.github.com",
+        "google.*",
+        "stackoverflow.com"
+      ]
     },
     {
-      "name": "Fallback",
+      "name": "兜底规则",
       "browser": "edge",
       "domains": ["*"]
     }
@@ -90,7 +112,8 @@ Release 包已经包含 `GoTo.exe`。安装过程不需要 Python、pip、PyInst
 
 - 规则按顺序匹配，先命中先使用。
 - `*` 表示兜底规则，建议放在最后。
-- 子域名会继承父域名规则，例如 `gist.github.com` 会匹配 `github.com`。
+- 支持子域名继承匹配（如 `github.com` 会自动匹配 `gist.github.com`）。
+- 支持通配符匹配（如 `*.domain.com`、`domain.*`）。
 - `browser` 目前支持 `chrome` 和 `edge`。
 - `browser_paths` 留空时自动探测浏览器路径；探测失败时可以手动填写 exe 路径。
 
@@ -106,7 +129,7 @@ Windows 查询当前默认浏览器的 URL 处理器
 调用 GoTo.exe，并把 URL 作为参数传入
         |
         v
-GoTo 读取 rules.json，提取域名并匹配规则
+GoTo 清洗 URL 并比对 rules.json 规则
         |
         v
 启动 Chrome 或 Edge 打开链接
@@ -115,80 +138,40 @@ GoTo 读取 rules.json，提取域名并匹配规则
 GoTo 退出
 ```
 
-安装脚本会修改当前默认浏览器 ProgId 的 `shell\open\command`。这是 GoTo 能拦截外部应用链接的关键。脚本会先备份原始注册表项，卸载时再尝试恢复。
-
-## 安全与杀毒软件
-
-GoTo 是开源项目，但 Release 中的 `GoTo.exe` 目前未做代码签名。Windows SmartScreen 或杀毒软件可能因为“未签名可执行文件”和“修改浏览器处理器注册表”而给出警告。
-
-建议：
-
-- 只从本项目的 GitHub Releases 下载。
-- 对照 Release 包里的 `SHA256SUMS.txt` 验证文件完整性。
-- 如果 `GoTo.exe` 安装后消失，检查 Windows Security 的保护历史或杀毒软件隔离区。
-- 不建议关闭杀毒软件；如果误报，请基于源码和哈希自行判断是否信任。
-
-## 常见问题
-
-### 安装失败，提示找不到 GoTo.exe
-
-你下载的可能是 GitHub 源码 zip。普通用户请下载 Releases 页面中的 `GoTo-Windows.zip`。
-
-### 链接突然不再分流
-
-先运行 `repair.bat`。如果仍然失败，检查：
-
-- `GoTo.exe` 是否还在安装目录。
-- `rules.json` 是否是合法 JSON。
-- Windows Security 或杀毒软件是否隔离了 `GoTo.exe`。
-- 点击链接的应用是否缓存了浏览器设置，必要时重启该应用。
-
-### QQ 或微信仍然用内置浏览器打开
-
-GoTo 只能处理交给 Windows 默认浏览器的链接。QQ、微信的部分链接会绕过 Windows 协议处理器，直接在内置浏览器中打开。安装脚本会写入 `UseDefaultBrowser = 1`，但某些小程序、公众号或支付相关链接仍可能被应用锁定，这是应用自身限制。
-
-### 点击 Edge 内部页面的链接是否会被分流
-
-不会。浏览器内部打开的链接通常由浏览器自己处理，GoTo 主要处理外部应用发起的 URL 打开请求。
-
 ## 从源码构建
 
 普通用户不需要执行本节。
 
+本项目支持 **Go 原生构建（推荐，极速秒开）** 与 **Python / PyInstaller 构建**：
+
 ```bat
 git clone https://github.com/JinPengWang/GoTo.git
 cd GoTo
-python -m pip install -r requirements-build.txt
 build.bat
 install.bat
 ```
 
-`build.bat` 会生成 `GoTo.exe` 和 `SHA256SUMS.txt`。安装脚本本身不会联网安装构建依赖。
+`build.bat` 具备智能双引擎检测：检测到 Go 时自动构建原生极速版；未检测到 Go 时自动调用 Python 构建。
 
 ## 项目文件
 
 ```text
 GoTo/
-  redirector.py              核心分流逻辑
-  rules.json                 域名规则
-  install.bat                用户安装脚本
-  repair.bat                 修复脚本
-  uninstall.bat              卸载脚本
-  build.bat                  开发者构建脚本
-  requirements-build.txt     构建依赖
-  version_info.txt           Windows exe 版本信息
-  .github/workflows/         Release 自动打包
-```
-
-不会提交到仓库的本机生成物：
-
-```text
-GoTo.exe
-backup/
-logs/
-build/
-dist/
-__pycache__/
+  ├── main.go                # Go 原生主程序入口
+  ├── router.go              # Go 核心路由与通配符规则引擎
+  ├── browser_windows.go     # Go Windows 注册表与浏览器唤起
+  ├── router_test.go         # Go 单元测试套件
+  ├── redirector.py          # Python 核心分流逻辑
+  ├── tests/                 # Python 自动化测试套件
+  ├── rules.json             # 域名分流规则文件
+  ├── install.bat            # 一键安装脚本
+  ├── repair.bat             # 一键修复脚本
+  ├── uninstall.bat          # 安全卸载脚本
+  ├── build.bat              # 智能双引擎构建脚本
+  ├── build-go.bat           # Go 极速版构建脚本
+  ├── requirements-build.txt # Python 构建依赖
+  ├── version_info.txt       # Windows exe 版本信息
+  └── .github/workflows/     # GitHub Actions 自动化 CI/CD
 ```
 
 ## 许可证

@@ -21,11 +21,11 @@ echo   GoTo - Uninstaller
 echo ============================================================
 echo.
 echo   This will:
-echo     - Restore the original browser handler
-echo     - Remove QQ and WeChat browser configuration
-echo     - Delete the exe and build artifacts
+echo     - Restore the original default browser protocol handler
+echo     - Remove QQ and WeChat browser configuration overrides
+echo     - Remove GoTo scheduled maintenance tasks
 echo.
-set /p "CONFIRM=   Proceed? (Y/N): "
+set /p "CONFIRM=   Proceed with uninstallation? (Y/N): "
 if /i not "!CONFIRM!"=="Y" (
     echo.
     echo   Cancelled.
@@ -38,7 +38,7 @@ echo.
 rem ==============================================
 rem Step 1: Read metadata from install
 rem ==============================================
-echo [1/5] Reading install metadata...
+echo [1/4] Reading install metadata...
 
 set "BACKUP_DIR=%cd%\backup"
 set "META_FILE=!BACKUP_DIR!\metadata.txt"
@@ -66,11 +66,10 @@ rem ==============================================
 rem Step 2: Restore registry
 rem ==============================================
 echo.
-echo [2/5] Restoring registry...
+echo [2/4] Restoring registry...
 
 set "RESTORED=0"
 
-rem Try to restore the default browser ProgId handler
 if defined PROG_ID (
     set "PROG_CMD_KEY=HKEY_CLASSES_ROOT\!PROG_ID!\shell\open\command"
     set "USER_PROG_CMD_KEY=HKCU\Software\Classes\!PROG_ID!\shell\open\command"
@@ -101,7 +100,7 @@ if defined PROG_ID (
         )
     )
 
-    rem First try: restore from .reg backup file
+    rem Restore HKCR from .reg backup file
     if exist "!BACKUP_DIR!\default_browser_backup.reg" (
         reg import "!BACKUP_DIR!\default_browser_backup.reg" >nul 2>&1
         if !errorlevel! equ 0 (
@@ -110,7 +109,7 @@ if defined PROG_ID (
         )
     )
 
-    rem Second try: set the original command directly
+    rem Fallback: set the original command directly
     if !RESTORED! equ 0 (
         if defined ORIG_CMD (
             reg add "!PROG_CMD_KEY!" /ve /t REG_SZ /d "!ORIG_CMD!" /f >nul 2>&1
@@ -122,27 +121,10 @@ if defined PROG_ID (
     )
 )
 
-rem Restore generic http/https handlers
-if exist "!BACKUP_DIR!\http_backup.reg" (
-    reg import "!BACKUP_DIR!\http_backup.reg" >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo   Restored: http handler
-        set /a RESTORED+=1
-    )
-)
-
-if exist "!BACKUP_DIR!\https_backup.reg" (
-    reg import "!BACKUP_DIR!\https_backup.reg" >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo   Restored: https handler
-        set /a RESTORED+=1
-    )
-)
-
 if !RESTORED! equ 0 (
     echo.
-    echo   [WARNING] No backups could be restored.
-    echo   Please set your default browser manually:
+    echo   [WARNING] Could not automatically restore registry.
+    echo   Please verify your default browser in Windows Settings:
     echo     Settings -^> Apps -^> Default Apps -^> Web Browser
 )
 
@@ -150,31 +132,30 @@ rem ==============================================
 rem Step 3: Remove scheduled maintenance tasks
 rem ==============================================
 echo.
-echo [3/6] Removing scheduled tasks...
+echo [3/4] Removing scheduled tasks...
 
 schtasks /delete /tn "GoTo-Maintain" /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Removed: GoTo-Maintain
 ) else (
-    echo   GoTo-Maintain task not found.
+    echo   GoTo-Maintain task not found or already removed.
 )
 
 schtasks /delete /tn "GoTo-Maintain-Scheduled" /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Removed: GoTo-Maintain-Scheduled
 ) else (
-    echo   GoTo-Maintain-Scheduled task not found.
+    echo   GoTo-Maintain-Scheduled task not found or already removed.
 )
 
 rem ==============================================
 rem Step 4: Remove QQ and WeChat browser configuration
 rem ==============================================
 echo.
-echo [4/6] Removing QQ and WeChat configuration...
+echo [4/4] Removing QQ and WeChat configuration...
 
 set "APP_CLEANED=0"
 
-rem QQ
 reg query "HKCU\Software\Tencent\QQ" /v UseDefaultBrowser >nul 2>&1
 if !errorlevel! equ 0 (
     reg delete "HKCU\Software\Tencent\QQ" /v UseDefaultBrowser /f >nul 2>&1
@@ -182,7 +163,6 @@ if !errorlevel! equ 0 (
     set /a APP_CLEANED+=1
 )
 
-rem QQNT
 reg query "HKCU\Software\Tencent\QQNT" /v UseDefaultBrowser >nul 2>&1
 if !errorlevel! equ 0 (
     reg delete "HKCU\Software\Tencent\QQNT" /v UseDefaultBrowser /f >nul 2>&1
@@ -190,7 +170,6 @@ if !errorlevel! equ 0 (
     set /a APP_CLEANED+=1
 )
 
-rem WeChat
 reg query "HKCU\Software\Tencent\WeChat" /v UseDefaultBrowser >nul 2>&1
 if !errorlevel! equ 0 (
     reg delete "HKCU\Software\Tencent\WeChat" /v UseDefaultBrowser /f >nul 2>&1
@@ -199,47 +178,16 @@ if !errorlevel! equ 0 (
 )
 
 if !APP_CLEANED! equ 0 (
-    echo   No QQ/WeChat configuration found.
+    echo   No QQ/WeChat override configuration found.
 )
-
-rem ==============================================
-rem Step 5: Delete program files
-rem ==============================================
-echo.
-echo [5/6] Removing program files...
-
-if exist "GoTo.exe" (
-    del /f /q "GoTo.exe"
-    echo   Deleted: GoTo.exe
-) else (
-    echo   GoTo.exe not found, skipping.
-)
-
-if exist "redirector.spec" del /f /q "redirector.spec"
-
-rem ==============================================
-rem Step 6: Cleanup
-rem ==============================================
-echo.
-echo [6/6] Cleaning up...
-
-if exist "build" rd /s /q "build" && echo   Deleted: build/
-if exist "dist" rd /s /q "dist" && echo   Deleted: dist/
-if exist "__pycache__" rd /s /q "__pycache__" && echo   Deleted: __pycache__/
-if exist "!BACKUP_DIR!" rd /s /q "!BACKUP_DIR!" && echo   Deleted: backup/
-
-echo   Cleanup done.
 
 echo.
 echo ============================================================
-echo.
 echo   UNINSTALLATION COMPLETE
+echo ============================================================
 echo.
-echo   GoTo has been removed.
-echo.
-echo   If links stop working, please set your default browser:
-echo     Settings -^> Apps -^> Default Apps -^> Web Browser
-echo.
-echo   Thank you for using GoTo!
+echo   GoTo system hooks and tasks have been removed.
+echo   Your rules.json and program files were preserved.
+echo   If you wish to completely remove GoTo, you may now delete this folder.
 echo.
 pause

@@ -5,114 +5,123 @@ cd /d "%~dp0"
 
 echo.
 echo ============================================================
-echo   GoTo - Developer Build
+echo   GoTo - Smart Builder (Go Native / Python Fallback)
 echo ============================================================
 echo.
 echo   Working directory: %cd%
 echo.
 
 rem ==============================================
-rem Step 1: Find Python
+rem Check for Go compiler first
 rem ==============================================
-echo [1/6] Finding Python...
+set "GO_CMD="
+if exist "C:\Program Files\Go\bin\go.exe" set "GO_CMD=C:\Program Files\Go\bin\go.exe"
+
+if "!GO_CMD!"=="" (
+    for /f "delims=" %%i in ('where.exe go.exe 2^>nul') do (
+        if exist "%%i" set "GO_CMD=%%i"
+    )
+)
+
+if not "!GO_CMD!"=="" goto :BUILD_GO
+goto :BUILD_PYTHON
+
+:BUILD_GO
+echo [FOUND] Go compiler detected: !GO_CMD!
+for /f "tokens=*" %%i in ('"!GO_CMD!" version 2^>^&1') do echo   Version: %%i
+echo.
+echo ------------------------------------------------------------
+echo   Building Go Native Binary - Ultra Fast
+echo ------------------------------------------------------------
+echo.
+
+echo [1/4] Downloading Go dependencies...
+"!GO_CMD!" mod tidy >nul 2>&1
+
+echo [2/4] Running Go unit tests...
+"!GO_CMD!" test -v ./...
+if !errorlevel! neq 0 (
+    echo.
+    echo   [ERROR] Go unit tests failed! Fix tests before building.
+    pause
+    exit /b 1
+)
+
+echo [3/4] Compiling GoTo.exe...
+"!GO_CMD!" build -ldflags="-H=windowsgui -s -w" -o "GoTo.exe" .
+if !errorlevel! neq 0 (
+    echo.
+    echo   [ERROR] Go compilation failed.
+    pause
+    exit /b 1
+)
+
+for %%A in ("GoTo.exe") do set "EXESIZE=%%~zA"
+set /a "EXESIZE_KB=!EXESIZE! / 1024"
+echo   Built: %cd%\GoTo.exe [!EXESIZE_KB! KB]
+
+goto :GENERATE_CHECKSUM
+
+:BUILD_PYTHON
+echo [INFO] Go compiler not detected. Using Python build pipeline...
+echo.
 
 set "PYTHON="
-for /f "tokens=*" %%P in ('where python.exe 2^>nul') do (
-    if not defined PYTHON (
-        "%%P" --version >nul 2>&1
-        if !errorlevel! equ 0 set "PYTHON=%%P"
+if exist "C:\Program Files\Python312\python.exe" set "PYTHON=C:\Program Files\Python312\python.exe"
+
+if "!PYTHON!"=="" (
+    for /f "delims=" %%i in ('where.exe python.exe 2^>nul') do (
+        if "!PYTHON!"=="" if exist "%%i" set "PYTHON=%%i"
+    )
+)
+if "!PYTHON!"=="" (
+    for /f "delims=" %%i in ('where.exe python3.exe 2^>nul') do (
+        if "!PYTHON!"=="" if exist "%%i" set "PYTHON=%%i"
     )
 )
 
-if not defined PYTHON (
-    for /f "tokens=*" %%P in ('where python3.exe 2^>nul') do (
-        if not defined PYTHON (
-            "%%P" --version >nul 2>&1
-            if !errorlevel! equ 0 set "PYTHON=%%P"
-        )
-    )
-)
-
-if not defined PYTHON (
+if "!PYTHON!"=="" (
     echo.
-    echo   [ERROR] Python 3.8+ was not found.
-    echo   Install Python, then run build.bat again.
+    echo   [ERROR] Neither Go nor Python 3.8+ was found.
+    echo   Please install Go https://go.dev/ or Python.
     echo.
     pause
     exit /b 1
 )
 
 for /f "tokens=*" %%i in ('"!PYTHON!" --version 2^>^&1') do set "PYVER=%%i"
-echo   Found: !PYVER!
-echo   Path: !PYTHON!
+echo   Found Python: !PYVER!
 
-rem ==============================================
-rem Step 2: Validate source files
-rem ==============================================
-echo.
-echo [2/6] Validating source files...
-
+echo [1/4] Validating source files...
 if not exist "redirector.py" (
     echo   [ERROR] redirector.py not found.
     pause
     exit /b 1
 )
-
-if not exist "rules.json" (
-    echo   [ERROR] rules.json not found.
-    pause
-    exit /b 1
-)
-
 "!PYTHON!" -m json.tool "rules.json" >nul 2>&1
 if !errorlevel! neq 0 (
-    echo.
     echo   [ERROR] rules.json is not valid JSON.
-    "!PYTHON!" -m json.tool "rules.json"
-    echo.
     pause
     exit /b 1
 )
 
-"!PYTHON!" -m py_compile "redirector.py"
+echo [2/4] Running Python unit tests...
+"!PYTHON!" -m unittest discover -s tests -p "test_*.py" -v
 if !errorlevel! neq 0 (
     echo.
-    echo   [ERROR] redirector.py failed Python syntax validation.
-    echo.
+    echo   [ERROR] Python unit tests failed!
     pause
     exit /b 1
 )
 
-echo   Source files are valid.
-
-rem ==============================================
-rem Step 3: Check PyInstaller
-rem ==============================================
-echo.
-echo [3/6] Checking PyInstaller...
-
+echo [3/4] Building GoTo.exe via PyInstaller...
 "!PYTHON!" -c "import PyInstaller" >nul 2>&1
 if !errorlevel! neq 0 (
-    echo.
-    echo   [ERROR] PyInstaller is not installed in this Python environment.
-    echo.
-    echo   Install it manually, then run build.bat again:
-    echo     "!PYTHON!" -m pip install -r requirements-build.txt
-    echo.
-    echo   If PyPI SSL fails, use a trusted mirror or offline wheel.
-    echo   install.bat never installs build dependencies on user machines.
-    echo.
+    echo   [ERROR] PyInstaller is not installed in Python environment.
+    echo   Run: "!PYTHON!" -m pip install -r requirements-build.txt
     pause
     exit /b 1
 )
-
-echo   PyInstaller is available.
-
-rem ==============================================
-rem Step 4: Build exe
-rem ==============================================
-echo.
-echo [4/6] Building GoTo.exe...
 
 if exist "build" rd /s /q "build"
 if exist "dist" rd /s /q "dist"
@@ -123,49 +132,31 @@ if exist "version_info.txt" set "VERSION_FLAG=--version-file version_info.txt"
 
 "!PYTHON!" -m PyInstaller --onefile --noconsole --name GoTo --clean --noconfirm !VERSION_FLAG! redirector.py
 if !errorlevel! neq 0 (
-    echo.
-    echo   [ERROR] Build failed.
-    echo.
+    echo   [ERROR] PyInstaller build failed.
     pause
     exit /b 1
 )
 
 copy /y "dist\GoTo.exe" "GoTo.exe" >nul
-if !errorlevel! neq 0 (
-    echo.
-    echo   [ERROR] Could not copy dist\GoTo.exe to project root.
-    echo.
-    pause
-    exit /b 1
-)
+for %%A in ("GoTo.exe") do set "EXESIZE=%%~zA"
+set /a "EXESIZE_KB=!EXESIZE! / 1024"
+echo   Built: %cd%\GoTo.exe [!EXESIZE_KB! KB]
 
-echo   Built: %cd%\GoTo.exe
-
-rem ==============================================
-rem Step 5: Generate checksum
-rem ==============================================
+:GENERATE_CHECKSUM
 echo.
-echo [5/6] Generating SHA256SUMS.txt...
+echo [4/4] Generating SHA256SUMS.txt...
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$files = 'GoTo.exe','rules.json','install.bat','uninstall.bat','repair.bat'; $files | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { $h = Get-FileHash -Algorithm SHA256 -LiteralPath $_; '{0}  {1}' -f $h.Hash.ToLower(), $_ } | Set-Content -Encoding ascii -LiteralPath 'SHA256SUMS.txt'"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$files = 'GoTo.exe','rules.json','install.bat','uninstall.bat','repair.bat','README.md','README.en.md','LICENSE'; $files | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { $h = Get-FileHash -Algorithm SHA256 -LiteralPath $_; '{0}  {1}' -f $h.Hash.ToLower(), $_ } | Set-Content -Encoding ascii -LiteralPath 'SHA256SUMS.txt'"
 if !errorlevel! neq 0 (
     echo   [WARNING] Could not generate SHA256SUMS.txt.
 ) else (
     echo   Wrote: SHA256SUMS.txt
 )
 
-rem ==============================================
-rem Step 6: Finish
-rem ==============================================
 echo.
-echo [6/6] Done.
+echo ============================================================
+echo   BUILD COMPLETE
+echo ============================================================
 echo.
-echo   Build complete. To create a user package, include:
-echo     GoTo.exe
-echo     rules.json
-echo     install.bat
-echo     uninstall.bat
-echo     repair.bat
-echo     SHA256SUMS.txt
+echo   GoTo.exe is ready in the current folder.
 echo.
-pause

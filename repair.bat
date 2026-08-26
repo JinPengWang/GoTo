@@ -22,7 +22,7 @@ echo.
 echo   Working directory: %cd%
 echo.
 
-echo [1/5] Checking files...
+echo [1/6] Checking files...
 
 if not exist "GoTo.exe" (
     echo.
@@ -57,7 +57,7 @@ echo   GoTo.exe is present.
 echo   rules.json is valid.
 
 echo.
-echo [2/5] Detecting default browser...
+echo [2/6] Detecting default browser...
 
 set "PROG_ID="
 for /f "tokens=3" %%a in ('reg query "HKCU\SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice" /v ProgId 2^>nul ^| findstr /i "ProgId"') do (
@@ -73,7 +73,7 @@ if not defined PROG_ID (
 echo   Default browser ProgId: !PROG_ID!
 
 echo.
-echo [3/5] Re-registering GoTo...
+echo [3/6] Re-registering GoTo...
 
 set "PROG_CMD_KEY=HKEY_CLASSES_ROOT\!PROG_ID!\shell\open\command"
 set "USER_PROG_CMD_KEY=HKCU\Software\Classes\!PROG_ID!\shell\open\command"
@@ -90,8 +90,6 @@ if !errorlevel! neq 0 (
 )
 
 reg add "!PROG_CMD_KEY!" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
-reg add "HKEY_CLASSES_ROOT\http\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
-reg add "HKEY_CLASSES_ROOT\https\shell\open\command" /ve /t REG_SZ /d "!NEW_CMD!" /f >nul 2>&1
 
 echo   Re-registered protocol handler.
 
@@ -125,16 +123,14 @@ if !APP_CONFIGURED! equ 0 echo   QQ and WeChat not found.
 echo.
 echo [5/6] Ensuring scheduled tasks exist...
 
-rem Re-create scheduled tasks (idempotent — /f overwrites if exists)
-rem Use GoTo.exe --maintain directly (compiled with --noconsole, no window)
-schtasks /create /tn "GoTo-Maintain" /tr "\"%cd%\GoTo.exe\" --maintain" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
+schtasks /create /tn "GoTo-Maintain" /tr "\"\"!EXE_PATH!\" --maintain\"" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Verified: GoTo-Maintain (at logon)
 ) else (
     echo   [WARNING] Failed to create logon task.
 )
 
-schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"%cd%\GoTo.exe\" --maintain" /sc hourly /mo 4 /rl limited /f >nul 2>&1
+schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"\"!EXE_PATH!\" --maintain\"" /sc hourly /mo 4 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Verified: GoTo-Maintain-Scheduled (every 4 hours)
 ) else (
@@ -162,10 +158,11 @@ if !errorlevel! neq 0 (
 echo   Registry handler points to GoTo.exe.
 echo.
 echo ============================================================
-echo.
 echo   REPAIR COMPLETE
+echo ============================================================
 echo.
 echo   If links still do not route, restart the app you clicked links from.
-echo   If GoTo.exe disappears again, check Windows Security protection history.
+echo   You can test routing with:
+echo     GoTo.exe --test "https://github.com"
 echo.
 pause

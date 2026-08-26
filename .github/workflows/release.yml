@@ -17,29 +17,32 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          python-version: "3.11"
-
-      - name: Install build dependencies
-        run: python -m pip install -r requirements-build.txt
+          go-version: "stable"
+          cache: true
 
       - name: Validate rules
         shell: powershell
-        run: python -m json.tool rules.json | Out-Null
+        run: |
+          Get-Content -Raw -Encoding UTF8 rules.json | ConvertFrom-Json | Out-Null
+          Write-Host "rules.json is valid."
 
-      - name: Validate Python source
-        run: python -m py_compile redirector.py
+      - name: Download Go dependencies
+        run: go mod tidy
 
-      - name: Build GoTo.exe
-        run: python -m PyInstaller --onefile --noconsole --name GoTo --clean --noconfirm --version-file version_info.txt redirector.py
+      - name: Run Go Unit Tests
+        run: go test -v ./...
+
+      - name: Build Ultra-Fast Native GoTo.exe
+        run: go build -ldflags="-H=windowsgui -s -w" -o GoTo.exe .
 
       - name: Prepare release package
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force release\GoTo | Out-Null
-          Copy-Item dist\GoTo.exe release\GoTo\
+          Copy-Item GoTo.exe release\GoTo\
           Copy-Item rules.json release\GoTo\
           Copy-Item install.bat release\GoTo\
           Copy-Item uninstall.bat release\GoTo\

@@ -143,8 +143,6 @@ if !errorlevel! neq 0 (
     echo   Modified: !PROG_ID!\shell\open\command
 )
 
-echo   Modified: http and https fallback handlers
-
 if !REGISTER_ERRORS! neq 0 (
     echo.
     echo   [ERROR] Could not write the primary registry handler.
@@ -184,16 +182,16 @@ if !errorlevel! equ 0 (
 )
 
 if !APP_CONFIGURED! equ 0 (
-    echo   QQ and WeChat not found.
+    echo   QQ and WeChat not found (or will use system default).
 ) else (
-    echo   Some QQ/WeChat links may still be forced into built-in browsers.
+    echo   External links from QQ/WeChat configured to use default browser.
 )
 
 rem ==============================================
 rem Step 6: Health check
 rem ==============================================
 echo.
-echo [6/8] Running health check...
+echo [6/7] Running health check...
 
 if not exist "!EXE_PATH!" (
     echo.
@@ -227,11 +225,10 @@ rem ==============================================
 rem Step 7: Set up automatic maintenance
 rem ==============================================
 echo.
-echo [7/8] Setting up automatic maintenance...
+echo [7/7] Setting up automatic maintenance...
 
 rem Create scheduled task: run at user logon (1 min delay)
-rem Use GoTo.exe --maintain directly (compiled with --noconsole, no window)
-schtasks /create /tn "GoTo-Maintain" /tr "\"%cd%\GoTo.exe\" --maintain" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
+schtasks /create /tn "GoTo-Maintain" /tr "\"\"!EXE_PATH!\" --maintain\"" /sc onlogon /delay 0001:00 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Created task: GoTo-Maintain (at logon)
 ) else (
@@ -239,24 +236,17 @@ if !errorlevel! equ 0 (
 )
 
 rem Create scheduled task: run every 4 hours
-schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"%cd%\GoTo.exe\" --maintain" /sc hourly /mo 4 /rl limited /f >nul 2>&1
+schtasks /create /tn "GoTo-Maintain-Scheduled" /tr "\"\"!EXE_PATH!\" --maintain\"" /sc hourly /mo 4 /rl limited /f >nul 2>&1
 if !errorlevel! equ 0 (
     echo   Created task: GoTo-Maintain-Scheduled (every 4 hours)
 ) else (
     echo   [WARNING] Failed to create periodic task.
 )
 
-echo   GoTo will auto-repair if registration is reset by browser or Windows updates.
-
-rem ==============================================
-rem Step 8: Finish
-rem ==============================================
-echo.
-echo [8/8] Done.
 echo.
 echo ============================================================
-echo.
 echo   INSTALLATION COMPLETE
+echo ============================================================
 echo.
 echo   GoTo is now active.
 echo.
@@ -264,8 +254,10 @@ echo   Config:  %cd%\rules.json
 echo   Logs:    %%APPDATA%%\GoTo\logs\ or %cd%\logs\
 echo   Backup:  !BACKUP_DIR!\
 echo.
+echo   Test routing anytime:
+echo     GoTo.exe --test "https://github.com"
+echo.
 echo   If GoTo stops working, run repair.bat.
 echo   Run uninstall.bat to remove and restore original settings.
 echo.
 pause
-
